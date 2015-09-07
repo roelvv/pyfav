@@ -40,6 +40,7 @@ except ImportError:
     from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
+from .exceptions import FaviconNotFoundException, DownloadFailedException, InvalidContentException
 
 
 # Some hosts don't like the requests default UA. Use this one instead.
@@ -76,31 +77,36 @@ def download_favicon(url, file_prefix='', target_dir='/tmp'):
     favicon_url = get_favicon_url(url)
 
     if not favicon_url:
-        raise Exception("Unable to find favicon for, %s" % url)
+        raise FaviconNotFoundException("Unable to find favicon for, %s" % url)
 
     # We finally have a URL for our favicon. Get it. 
     response = requests.get(favicon_url, headers=headers)
     if response.status_code == requests.codes.ok:
+        if len(response.content) == 0:
+            raise InvalidContentException()
+    
         # we want to get the the filename from the url without any params
         parsed_uri = urlparse(favicon_url)
         favicon_filepath = parsed_uri.path
         favicon_path, favicon_filename  = os.path.split(favicon_filepath)
 
-    valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
-    
-    sanitized_filename = "".join([x if valid_chars \
-        else "" for x in favicon_filename])
+        valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
         
-    sanitized_filename = os.path.join(target_dir, file_prefix + 
-        sanitized_filename)
-        
-    with open(sanitized_filename, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=1024): 
-                if chunk: # filter out keep-alive new chunks
-                    f.write(chunk)
-                    f.flush()
+        sanitized_filename = "".join([x if valid_chars \
+            else "" for x in favicon_filename])
+            
+        sanitized_filename = os.path.join(target_dir, file_prefix + 
+            sanitized_filename)
+            
+        with open(sanitized_filename, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=1024): 
+                    if chunk: # filter out keep-alive new chunks
+                        f.write(chunk)
+                        f.flush()
                     
-    return sanitized_filename
+        return sanitized_filename
+    else:
+        raise DownloadFailedException('Unexpected status code %s' % response.status_code)
 
 
 def parse_markup_for_favicon(markup, url):
