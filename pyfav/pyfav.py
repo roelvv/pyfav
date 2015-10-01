@@ -50,7 +50,7 @@ headers = {
         Safari/537.36'
 }
 
-def download_favicon(url, file_prefix='', target_dir='/tmp'):
+def download_favicon(url, file_prefix='', target_dir='/tmp', timeout=None):
     """
     Given a URL download the save it to disk
     
@@ -74,13 +74,13 @@ def download_favicon(url, file_prefix='', target_dir='/tmp'):
     if not parsed_site_uri.scheme or not parsed_site_uri.netloc:
         raise Exception("Unable to parse URL, %s" % url)
 
-    favicon_url = get_favicon_url(url)
+    favicon_url = get_favicon_url(url, timeout=timeout)
 
     if not favicon_url:
         raise FaviconNotFoundException("Unable to find favicon for, %s" % url)
 
     # We finally have a URL for our favicon. Get it. 
-    response = requests.get(favicon_url, headers=headers)
+    response = requests.get(favicon_url, headers=headers, timeout=timeout)
     if response.status_code == requests.codes.ok:
         if len(response.content) == 0:
             raise InvalidContentException()
@@ -159,7 +159,7 @@ def parse_markup_for_favicon(markup, url):
     return None
 
 
-def get_favicon_url(url):
+def get_favicon_url(url, timeout=None):
     """
     Returns a favicon URL for the URL passed in. We look in the markup returned
     from the URL first and if we don't find a favicon there, we look for the 
@@ -177,7 +177,7 @@ def get_favicon_url(url):
 
     # Get the markup
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=timeout)
     except:
         raise Exception("Unable to find URL. Is it valid? %s" % url)
     
@@ -193,7 +193,7 @@ def get_favicon_url(url):
     favicon_url = '{uri.scheme}://{uri.netloc}/favicon.ico'.format(\
         uri=parsed_site_uri)
                         
-    response = requests.get(favicon_url, headers=headers)
+    response = requests.get(favicon_url, headers=headers, timeout=timeout)
     if response.status_code == requests.codes.ok:
         return favicon_url
 
